@@ -180,7 +180,18 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # Referencing the original paper (https://arxiv.org/abs/1502.03167)   #
         # might prove to be helpful.                                          #
         #######################################################################
-        pass
+        means = np.mean(x, axis=0)
+        variances = np.var(x, axis=0)
+        variances += eps
+        normalized_x = (x - means)/np.sqrt(variances)
+
+        out = normalized_x * gamma
+        out += beta
+
+        running_mean = momentum*running_mean + (1-momentum)*means
+        running_var = momentum*running_var + (1-momentum)*variances
+
+        cache = (x, means, N, normalized_x, variances, gamma)
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -191,7 +202,9 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
-        pass
+        out = (x - running_mean)/np.sqrt(running_var)
+        out *= gamma
+        out += beta
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -229,7 +242,31 @@ def batchnorm_backward(dout, cache):
     # Referencing the original paper (https://arxiv.org/abs/1502.03167)       #
     # might prove to be helpful.                                              #
     ###########################################################################
-    pass
+    (x, means, N, normalized_x, variances, gamma) = cache
+    dl_dbeta = np.sum(dout, axis=0)
+    dl_dgamma = np.sum(normalized_x * dout, axis=0)
+    dl_dxhat = gamma * dout 
+    
+    #partial derivatives of normalization function
+    dl_dmu_2 = np.sum(-(1/np.sqrt(variances)) * dl_dxhat, axis=0)
+    dl_ds = np.sum(- 0.5 * (x - means) * np.power(variances, -3/2) * dl_dxhat, axis=0)
+    dl_dx_1 = dl_dxhat / np.sqrt(variances)
+
+    #partial derivatives of variance function
+    dl_dmu_1 = np.sum(-2*x + 2*means, axis=0) * dl_ds / N
+    dl_dx_2 = (2*x - 2*means) * dl_ds / N
+
+    #derivative of mean function (summing partial derivatives for mean)/
+    dl_dmu = dl_dmu_1 + dl_dmu_2
+    dl_dx_3 = dl_dmu / N
+
+    #summing partial derivatives for x
+    dl_dx = dl_dx_1 + dl_dx_2 + dl_dx_3
+
+    dbeta = dl_dbeta
+    dgamma = dl_dgamma
+    dx = dl_dx
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -260,7 +297,13 @@ def batchnorm_backward_alt(dout, cache):
     # should be able to compute gradients with respect to the inputs in a     #
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
-    pass
+    (_, _, N, normalized_x, variances, gamma) = cache
+    dgamma = np.sum(normalized_x * dout, axis=0)
+    dbeta = np.sum(dout, axis=0)
+    
+    #see https://chrisyeh96.github.io/2017/08/28/deriving-batchnorm-backprop.html
+    dx = (gamma/N) / np.sqrt(variances) * (N * dout - dgamma * normalized_x - dbeta) 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -302,7 +345,17 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # transformations you could perform, that would enable you to copy over   #
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
-    pass
+    N, _ = x.shape
+    
+    x_T = x.T
+    means = np.mean(x_T, axis=0)
+    variances = np.var(x_T, axis=0)
+    variances += eps
+    normalized_x = (x_T - means)/np.sqrt(variances)
+    normalized_x = normalized_x.T
+    out = normalized_x * gamma
+    out += beta
+    cache = (x, means, normalized_x, variances, gamma)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -333,7 +386,39 @@ def layernorm_backward(dout, cache):
     # implementation of batch normalization. The hints to the forward pass    #
     # still apply!                                                            #
     ###########################################################################
-    pass
+    _, D = dout.shape
+    (x, means, normalized_x, variances, gamma) = cache
+
+    variances = variances[:,np.newaxis]
+    means = means[:,np.newaxis]
+    gamma = gamma[np.newaxis,:]
+
+    dl_dbeta = np.sum(dout, axis=0) #[N,]
+    dl_dgamma = np.sum(normalized_x * dout, axis=0) #[N,]
+    dl_dxhat = gamma * dout #[N,D]
+
+    #partial derivatives of normalization function
+    dl_dmu_2 = np.sum(-(1/np.sqrt(variances)) * dl_dxhat, axis=1) #[N,]
+    dl_ds = np.sum(- 0.5 * (x - means) * np.power(variances, -3/2) * dl_dxhat, axis=1) #[N,]
+    dl_dx_1 = dl_dxhat / np.sqrt(variances) #[N,D]
+    
+
+    #partial derivatives of variance function
+    dl_dmu_1 = np.sum(-2*x + 2*means, axis=1) * dl_ds / D #[N,]
+    dl_dx_2 = (2*x - 2*means) * dl_ds[:,np.newaxis] / D #[N,D]
+    
+
+    #derivative of mean function (summing partial derivatives for mean)/
+    dl_dmu = dl_dmu_1 + dl_dmu_2
+    dl_dx_3 = dl_dmu / D
+
+    #summing partial derivatives for x
+    dl_dx = dl_dx_1 + dl_dx_2 + dl_dx_3[:,np.newaxis]
+
+    dbeta = dl_dbeta
+    dgamma = dl_dgamma
+    dx = dl_dx
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
