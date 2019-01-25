@@ -541,7 +541,27 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    
+    N, _, H, W = x.shape
+    F, _, HH, WW = w.shape
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
+    H_ = int(1 + (H + 2*pad - HH)/stride)
+    W_ = int(1 + (W + 2*pad - WW)/stride)
+    out = np.zeros((N,F,H_,W_))
+
+    boundaries_x = [(x,x+WW) for x in range(0, W, stride) ]
+    boundaries_y = [(x,x+HH) for x in range(0, H, stride) ]
+    for i in range(0,N):
+        sample = x[i,:,:,:]
+        padded_sample = np.pad(sample, pad, "constant")[pad:-pad]
+        for u, (x1,x2) in enumerate(boundaries_x):
+            for v, (y1,y2) in enumerate(boundaries_y):
+                receptive_field = padded_sample[:, y1:y2, x1:x2]
+                for f in range(0,F):
+                    conv = np.sum(receptive_field*w[f,:,:,:]) + b[f]
+                    out[i,f,v,u] = conv    
+                    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -566,7 +586,39 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    _, _, Hh, Hw = dout.shape
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
+
+    padded_x = np.pad(x, pad, "constant")[pad:-pad,pad:-pad]
+
+    boundaries_x_dout = [(x,x+Hw) for x in range(0, WW, stride) ]
+    boundaries_y_dout = [(x,x+Hh) for x in range(0, HH, stride) ]
+    dw = np.zeros_like(w)
+    for f in range(0, F):
+        for c in range(0, C):
+            for i, (x1,x2) in enumerate(boundaries_x_dout):
+                for j, (y1,y2) in enumerate(boundaries_y_dout):
+                    sub_xpad = padded_x[:, c, x1:x2, y1:y2]
+                    dw[f, c, i, j] = np.sum(dout[:, f, :, :] * sub_xpad)
+
+    db = np.zeros_like(b)
+    for f in range(0, F):
+        db[f] = np.sum(dout[:, f, :, :])
+
+    boundaries_x_w = [(x,x+HH) for x in range(0, H, stride) ]
+    boundaries_y_w = [(x,x+WW) for x in range(0, W, stride) ]
+    dx = np.zeros_like(padded_x)
+    for n in range(0, N):
+        for f in range(F):
+            for i, (x1,x2) in enumerate(boundaries_x_w):
+                for j, (y1,y2) in enumerate(boundaries_y_w):
+                    dx[n, :, x1:x2, y1:y2] += w[f] * dout[n, f, i, j]
+
+    dx = dx[:,:,pad:-pad,pad:-pad]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
