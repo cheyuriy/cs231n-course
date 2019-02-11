@@ -2,7 +2,7 @@
 
 ## Spring 2018 assignments
 
-Based on materials from [official course page](cs231n.github.io), [repository](https://github.com/cs231n/cs231n.github.io/tree/master/assignments/2018) and playlist with lectures [Stanford University CS231n, Spring 2017](|https://www.youtube.com/playlist?list=PLC1qU-LWwrF64f4QKQT-Vg5Wr4qEE1Zxk).
+Based on materials from [official course page](cs231n.github.io), [repository](https://github.com/cs231n/cs231n.github.io/tree/master/assignments/2018) and playlist with lectures [Stanford University CS231n, Spring 2017](https://www.youtube.com/playlist?list=PLC1qU-LWwrF64f4QKQT-Vg5Wr4qEE1Zxk).
 
 ### Notes
 
