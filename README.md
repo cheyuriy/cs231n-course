@@ -15,6 +15,8 @@ Based on materials from [official course page](cs231n.github.io), [repository](h
 ### Configuration used
 
 Video card: NVIDIA GeForce GTX680 (3Gb VRAM)
+
 Driver version: 410.79
+
 CUDA version: 9.0.176
 
